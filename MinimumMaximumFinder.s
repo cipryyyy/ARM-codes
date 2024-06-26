@@ -1,44 +1,42 @@
-.bss
-	min: .skip 4			@value of min
-	mindex: .skip 1			@index of min
-	.align				@align to word
-	max: .skip 4			@value of max
-	Mindex: .skip 1			@index of max
-	.align				@align to word
 .data
-	@Array:
-	V: .word 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10
-	@End the array, used to calculate the length
-	end: .word 0
+	V: .word -9606, 1664, 278, -5169, -9663, 4713, 1321, 1579, -2622, 2439, -2530, 6653, -8164, 9433, 1643, 7424, -235, -2090, -4116, 121, -8852, 1207, 6934, -3421, -2056, 7566, -3155, -2730, -4737, -29, -9936, -7056, -2203, 1451, 6567, -8361, 213, 9916, 3620, 9559, -6515, 5960, -7790, 5835, 7524, -7764, -2228, 5305, 1495, -720, -6702, 1799, -5910, 5026, 5054, 5483, 6959, -9981, -1827, -8757, 4114, 8384, 3923, 660, -1166, -1066, -8267, 372, 7284, -1143, 3756, -3044, 1376, 7169, 5480, -7555, 7861, -5742, 1745, -1489, -3225, -9259, -7092, -6835, 259, -6428, 5263, 4613, -8624, -1680, 7302, 7155, -6343, -6078, 6867, 1887, 3063, 9099, 4142, 5206, -940, -2050, 2727, 3779, 585, -5268, 7434, 9576, -2519, 9712, 2180, -3105, 6083, -5620, 491, 7688, -9129, 7423, -657, 1969, 2686, 4341, -5572, -5066, 5849, 7009, 6157, -8125, -7577, 412, -6471, -3054, 6019, 4503, -6800, -2859, 1701, -9776, 5671, -4926, 2808, -2822, -8765, -2915, 5250, -1591, -958, -798, -7568, -6984, 5882, 3800, -1401, -5490, 4955, -6283, 3956, 589, -971, -6059, -401, -3688, -4468, 2003, -1241, -6090, -4965, -8026, -1520, -9391, -2032, 3431, -5458, -5386, -2415, 5601, -730, -5163, 8824, 1847, 4453, 2714, 842, 820, 9283, -209, -4953, -3965, -3742, -7138, 526, 3244, -1674, 76, 3447, -3751, -9804, -9656, -178, 6432
+	EOA: .byte 0		@End of array	
+	.align
+.bss
+	max: .skip 4			@Maximum address
+	ind_max: .skip 2		@Index of maximum
+	.align
+	min: .skip 4			@Minimum address
+	ind_min: .skip 2		@Index of minimum
+	.align
 .text
-	.global MinMaxFinder
-MinMaxFinder:
-	ldr r0, =V	 	@Load the array
-	mov r1, #0	 	@Reset the counter
-	mov r2, #0	 	@Maximum value
-	mov r3, #0	 	@Index
-	ldr r4, =end 	@End of the array
-	mov r6, #0	 	@Minimum value
-	mov r7, #0	 	@Index
-	sub r4, r4, r0	@Calculate the difference between start of array end end of array
-	lsr r4, #2		@Divide by 4
+	.global minmax
+minmax:
+	ldr r0, =V			@Load address
+	ldr r1, =EOA		@Get the length
+	sub r1, r1, r0
+	lsr r1, #2
+	mov r2, #0			@Maximum register
+	mov r3, #0			@Index Max
+	mov r4, #0			@Minimum register
+	mov r5, #0			@Indice Min
 _loop:
-	ldr r5, [r0, r1, lsl #2]	@Load the element
-	cmp r5, r2					@Compare to maximum
-	movge r2, r5				@Save if greater
-	movge r3, r1
-	cmp r5, r6					@Compare to minimum
-	movle r6, r5				@Save if lower
-	movle r7, r1
-	add r1, #1					@Increment
-	cmp r1, r4					@Check if the array is ended
-	bne _loop
-	ldr r0, =max				@Store maximum
-	ldr r1, =Mindex
+	sub r1, r1, #1				@Decrement length
+	ldr r6, [r0, r1, lsl #2]	@Load element
+	cmp r6, r2				@Compare to max
+	movgt r2, r6			@If greater, save
+	movgt r3, r1
+	cmp r6, r4				@Compare to min
+	movlt r4, r6			@If smaller, save
+	movlt r5, r1
+	cmp r1, #0				@Check if the array is finished
+	bne _loop				@If not, loop
+	ldr r0, =max			@Store max
+	ldr r1, =ind_max
 	str r2, [r0]
 	str r3, [r1]
-	ldr r0, =min				@Store minimum
-	ldr r1, =mindex
-	str r6, [r0]
-	str r7, [r1]
-	b _end						@Jump to the end
+	ldr r0, =min			@Store min
+	ldr r1, =ind_min
+	str r4, [r0]
+	str r5, [r1]
+	b _end					@Jump to the end
