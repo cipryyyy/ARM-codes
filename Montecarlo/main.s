@@ -1,48 +1,66 @@
 .data
-	i:    .word 10000
-	seed: .word 1875
+	i:    		.word 100000		@Number of iterations
+	seed: 		.word 978124		@Seed of number generator
 .bss
-	random: .skip 4
-	pi:    .skip 4
+	random: 	.skip 4			@The pseudo-random generated number
+	pi:    		.skip 2			@Value of PI
+	.align
 .text
-.global _start
+	.global _start
 
 _divide:
-	vmov s0, r0
-	vmov s1, r1
-	vdiv.F32 s2, s0, s1
-	vmov s2, r0
+	VMOV 			S0, R0		@Move the value of r0 into s0 (float register)
+	VCVT.F32.S32 	S0, S0		@Convert from int to float
+	VMOV 			S1, R1		@Same here
+	VCVT.F32.S32 	S1, S1
+	VDIV.F32 		S2, S0, S1	@Divide s0 by s1
+	VMOV 			R0, S2		@Return result in r0
+	MOV 			PC, LR		@Exit
 _generator:
-	push 	{r0-r3, lr}
-	ldr 	r0, =seed
-	ldr 	r0, [r0]
-	tst 	r1, r1, lsr #1
-	movs 	r2, r0, rrx
-	adc 	r1, r1, r1
-	eor 	r2, r2, r0, lsl #12
-	eor 	r0, r2, r2, lsr #20
-	ldr 	r3, =random
-	str 	r2, [r3]
-	ldr     r3, =seed
-	str     r0, [r3]
-	pop 	{r0-r3, pc}
-
+	PUSH 			{R0-R3, LR}				@Save registers
+	LDR 			R0, =seed				@Load the seed
+	LDR 			R0, [R0]
+	tst 			R1, R1, lsr #1			@Apply the algorithm
+	MOVS 			R2, R0, rrx
+	ADC 			R1, R1, R1
+	EOR 			R2, R2, R0, lsl #12
+	EOR 			R0, R2, R2, lsr #20
+	LDR 			R3, =random				@Save the generated number (just the last halfword)
+	STRH 			R2, [r3]
+	LDR     		R3, =seed				@Save the new seed
+	STR     		R0, [R3]
+	POP 			{R0-R3, PC}				@Exit the frame
 _start:
-	mov r10, #0
-	ldr r11, =i
-	ldr r11, [r11]
-	mov r12, #0
+	MOV				R8, #0x8888				@Radius squared
+	MUL 			R8, R8, R8
+	MOV 			R9, #0x8888				@Center of the circle
+	MOV 			R10, #0					@Iteration counter
+	LDR 			R11, =i					@Iteration limiter
+	LDR 			R11, [R11]
+	MOV 			R12, #0					@Point inside of the circle
 _loop:
-	bl _generator		@generate x
-	ldr r0, =random
-	ldr r0, [r0]
-	bl _generator		@generate y
-	ldr r1, =random
-	ldr r1, [r1]
+	BL 				_generator				@Generate x coordinate
+	LDR 			R0, =random
+	LDR 			R0, [R0]				@Load it in r0
+	SUB 			R0, R0, r9				@Normalize it between [-0x8888, 0x8888]
+	MUL 			R0, R0, R0				@Square it
+	BL 				_generator				@Repeat for y coordinate
+	LDR 			R1, =random
+	LDR 			R1, [R1]
+	SUB 			R1, R1, r9
+	MUL 			R1, R1, R1
+	ADD 			R2, R1, R0				@Sum x and y
+	CMP 			R2, R8					@If r^2 <= x^2+y^2 
+	ADDMI 			R12, R12, #1			@Point is inside
+	ADD 			R10, #1					@Increment cycle counter
+	CMP 			R10, R11				@Check if Cycle is done
+	BNE 			_loop
+	MOV 			R0, R12					@Move the counters in r0 and r1
+	LSL				R0, #2					@Multiply by 4
+	MOV 			R1, R11
+	BL 				_divide					@Execute r0/r1
+	LDR 			R1, =pi					@Save the value of Pi
+	STR 			R0, [R1]
+	B 				_end					@Quit
 	
-						@normalize
-						@Check if in circle
-						@If so, increment counter r12
-						@Divide val
-						@Multiply by 4
-						@Store in pi
+@TODO: value is a little higher, like 3.3 instead of 3.14, probably from the generator
